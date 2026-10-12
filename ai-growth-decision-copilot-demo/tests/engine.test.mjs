@@ -1,0 +1,15 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {parseCSV,coerce,summarize,run} from '../dist/engine.mjs';
+const path=new URL('../dist/data/',import.meta.url),schema=JSON.parse(fs.readFileSync(new URL('schema.json',path))),data=Object.fromEntries(Object.keys(schema.tables).map(k=>[k,coerce(parseCSV(fs.readFileSync(new URL(k+'.csv',path),'utf8')),schema.tables[k])]));
+const base={budget:1500,team:5,hours:null,futureUsers:null,parallel:2,weeks:4,privacy:'conservative',preference:'balanced'};
+test('CSV支持BOM、引号、逗号、换行和空末列',()=>{assert.deepEqual(parseCSV('\ufeffid,note,last\r\na,"x,y\n""z""",\r\n'),[{id:'a',note:'x,y\n"z"',last:''}]);assert.throws(()=>parseCSV('a,b\n1'));assert.throws(()=>parseCSV('a\n"x'));});
+test('历史cohort、当前New和当前时间资格分开',()=>{const s=summarize(data);assert.equal(s.baseline.rate,.18);assert.equal(s.post.rate,.31);assert.equal(s.newCount,280);assert.equal(s.newRepeats,90);assert.equal(s.currentEligible,0);assert.equal(s.newMarketing,238);assert.equal(s.newPersonalization,149);});
+test('默认推荐及显式未知，不把缺失值当通过',()=>{const r=run(data,base);assert.deepEqual(r.ranking.selected.map(x=>x.sourceId),['EXP001','EXP006']);assert.deepEqual(r.ranking.totals,{cost:270,hours:20,staff:3,count:2});assert.equal(r.ranking.launchReady,false);assert(r.ranking.unknown.includes('核心团队实际可用人时'));});
+test('工程与体验风险阻断，观察偏差可追踪',()=>{const r=run(data,base);assert(r.reviewed.find(x=>x.sourceId==='EXP003').issues.some(i=>i.title==='工程投入超出约束'&&i.severity==='block'));assert.equal(r.reviewed.find(x=>x.sourceId==='EXP008').status,'revise');assert(r.reviewed.find(x=>x.sourceId==='EXP002').issues.some(i=>i.title==='观察性证据'));});
+test('零预算/零人时/零未来供给均不可形成组合',()=>{for(const override of [{budget:0},{hours:0},{futureUsers:0}])assert.equal(run(data,{...base,...override}).ranking.selected.length,0);});
+test('组合级预算、人时、峰值及数量限制均成立',()=>{for(const budget of [70,90,180,270,390,1500])for(const team of [1,2,3,5])for(const hours of [6,8,12,20,36])for(const parallel of [1,2,3]){const t=run(data,{...base,budget,team,hours,parallel}).ranking.totals;assert(t.cost<=budget);assert(t.staff<=team);assert(t.hours<=hours);assert(t.count<=parallel);}});
+test('低现金偏好真正改变排序，预算紧张选择可行备选',()=>{assert.equal(run(data,{...base,preference:'cost'}).ranking.weights.cost,.25);assert.notDeepEqual(run(data,{...base,preference:'cost'}).ranking.ordered.map(c=>c.sourceId),run(data,base).ranking.ordered.map(c=>c.sourceId));assert.deepEqual(run(data,{...base,budget:100}).ranking.selected.map(x=>x.sourceId),['EXP006']);});
+test('无效配置拒绝，不产生伪结果',()=>{for(const x of [{budget:-1},{team:1.5},{parallel:4},{hours:NaN},{preference:'unknown'}])assert.throws(()=>run(data,{...base,...x}));});
+test('全部案例对应具体证据，不合成预计因果增量',()=>{const r=run(data,base);assert.equal(r.generated.length,8);for(const c of r.generated){assert.equal(c.expectedIncrementalEffect,null);assert(data.experiments.some(e=>e.experiment_id===c.evidenceRefs[0].rowId));}});

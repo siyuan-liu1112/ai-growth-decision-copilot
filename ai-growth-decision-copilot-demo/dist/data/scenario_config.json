@@ -1,0 +1,10 @@
+{
+  "total_team_size": 20,
+  "experiment_core_team": 5,
+  "budget_cad": 1500,
+  "implementation_window_weeks": 4,
+  "max_engineering_effort": "low",
+  "privacy_tolerance": "conservative",
+  "max_parallel_experiments": 3,
+  "preferred_experiment_duration_days": 14
+}

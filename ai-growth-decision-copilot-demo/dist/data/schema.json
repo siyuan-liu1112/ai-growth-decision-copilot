@@ -1,0 +1,527 @@
+{
+  "version": "1.0.0",
+  "is_synthetic": true,
+  "seed": 20261012,
+  "tables": {
+    "users": {
+      "grain": "one user",
+      "row_count": 800,
+      "primary_key": "user_id",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "string",
+          "nullable": false,
+          "description": "用户主键；模拟匿名ID"
+        },
+        {
+          "name": "segment",
+          "type": "string",
+          "nullable": false,
+          "description": "当前 CRM 分群：New/Active/Loyal/Dormant；独立于历史首次参与 cohort，不用于反推历史分群"
+        },
+        {
+          "name": "primary_interest",
+          "type": "string",
+          "nullable": false,
+          "description": "主兴趣；限定六个标签"
+        },
+        {
+          "name": "secondary_interest",
+          "type": "string",
+          "nullable": false,
+          "description": "次兴趣；限定六个标签且不同于主兴趣"
+        },
+        {
+          "name": "acquisition_channel",
+          "type": "string",
+          "nullable": false,
+          "description": "获客渠道"
+        },
+        {
+          "name": "first_participation_date",
+          "type": "string",
+          "nullable": false,
+          "description": "首次实际参加活动日期，非注册日期"
+        },
+        {
+          "name": "first_campaign_id",
+          "type": "string",
+          "nullable": true,
+          "description": "首次活动外键；仅 post_rebuild 有值，baseline 活动在本次24场之外"
+        },
+        {
+          "name": "cohort_phase",
+          "type": "string",
+          "nullable": false,
+          "description": "首次参与阶段：baseline/post_rebuild"
+        },
+        {
+          "name": "repeat_14d_eligible",
+          "type": "integer",
+          "nullable": false,
+          "description": "完整观察14天，1=是；本版全部为1"
+        },
+        {
+          "name": "repeat_14d",
+          "type": "integer",
+          "nullable": false,
+          "description": "首次参与后(0,14]天内再次实际参加活动，1/0"
+        },
+        {
+          "name": "second_participation_date",
+          "type": "string",
+          "nullable": true,
+          "description": "14天内第二次实际参与日期；未复参与为空，不表示终身没有再参与"
+        },
+        {
+          "name": "joined_interest_group_14d",
+          "type": "integer",
+          "nullable": false,
+          "description": "首次参与后14天内加入兴趣群，1/0；与结果同期观察，禁止作为无偏前置特征"
+        },
+        {
+          "name": "marketing_opt_in",
+          "type": "integer",
+          "nullable": false,
+          "description": "当前营销触达同意，1/0"
+        },
+        {
+          "name": "personalization_opt_in",
+          "type": "integer",
+          "nullable": false,
+          "description": "当前个性化同意，1/0；为1时营销同意也为1"
+        },
+        {
+          "name": "snapshot_date",
+          "type": "string",
+          "nullable": false,
+          "description": "CRM 分群及同意状态快照日期"
+        }
+      ]
+    },
+    "campaigns": {
+      "grain": "one event",
+      "row_count": 24,
+      "primary_key": "campaign_id",
+      "fields": [
+        {
+          "name": "campaign_id",
+          "type": "string",
+          "nullable": false,
+          "description": "活动主键"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "nullable": false,
+          "description": "模拟活动标题"
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "nullable": false,
+          "description": "活动类型；枚举见README"
+        },
+        {
+          "name": "event_date",
+          "type": "string",
+          "nullable": false,
+          "description": "活动日期"
+        },
+        {
+          "name": "cohort_phase",
+          "type": "string",
+          "nullable": false,
+          "description": "首次参与阶段：baseline/post_rebuild"
+        },
+        {
+          "name": "landing_page_unique_visitors",
+          "type": "integer",
+          "nullable": false,
+          "description": "该活动落地页去重访客；跨活动不可去重相加"
+        },
+        {
+          "name": "registrations",
+          "type": "integer",
+          "nullable": false,
+          "description": "该活动报名人数"
+        },
+        {
+          "name": "attendees",
+          "type": "integer",
+          "nullable": false,
+          "description": "该活动到场人数；包括新老用户"
+        },
+        {
+          "name": "new_attendees",
+          "type": "integer",
+          "nullable": false,
+          "description": "该活动首次参与本社区人数；与users按first_campaign_id严格对账"
+        },
+        {
+          "name": "repeat_14d_eligible_new_users",
+          "type": "integer",
+          "nullable": false,
+          "description": "新到场者中观察完整14天人数"
+        },
+        {
+          "name": "repeat_14d_new_users",
+          "type": "integer",
+          "nullable": false,
+          "description": "上述分母中14天内复参与人数"
+        },
+        {
+          "name": "registration_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "registrations / landing_page_unique_visitors"
+        },
+        {
+          "name": "attendance_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "attendees / registrations"
+        },
+        {
+          "name": "new_attendee_share",
+          "type": "number",
+          "nullable": false,
+          "description": "new_attendees / attendees"
+        },
+        {
+          "name": "new_user_repeat_14d_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "repeat_14d_new_users / repeat_14d_eligible_new_users"
+        },
+        {
+          "name": "event_cost_cad",
+          "type": "integer",
+          "nullable": false,
+          "description": "单场历史直接现金成本CAD；不包含人工机会成本"
+        },
+        {
+          "name": "measurement_end",
+          "type": "string",
+          "nullable": false,
+          "description": "完整14天观察窗截止日（活动日期/内容发布日期+14）"
+        }
+      ]
+    },
+    "contents": {
+      "grain": "one content item",
+      "row_count": 72,
+      "primary_key": "content_id",
+      "fields": [
+        {
+          "name": "content_id",
+          "type": "string",
+          "nullable": false,
+          "description": "内容主键"
+        },
+        {
+          "name": "content_type",
+          "type": "string",
+          "nullable": false,
+          "description": "内容类型；枚举见README"
+        },
+        {
+          "name": "related_campaign_id",
+          "type": "string",
+          "nullable": false,
+          "description": "相关活动外键；编辑关联而非因果归因"
+        },
+        {
+          "name": "publish_date",
+          "type": "string",
+          "nullable": false,
+          "description": "发布日期"
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "nullable": false,
+          "description": "发布渠道"
+        },
+        {
+          "name": "primary_interest",
+          "type": "string",
+          "nullable": false,
+          "description": "主兴趣；限定六个标签"
+        },
+        {
+          "name": "impressions",
+          "type": "integer",
+          "nullable": false,
+          "description": "展示次数，非独立用户"
+        },
+        {
+          "name": "clicks",
+          "type": "integer",
+          "nullable": false,
+          "description": "点击次数，非独立用户"
+        },
+        {
+          "name": "engagement_actions",
+          "type": "integer",
+          "nullable": false,
+          "description": "互动次数，可含分享；不可与分享相加"
+        },
+        {
+          "name": "shares",
+          "type": "integer",
+          "nullable": false,
+          "description": "分享次数"
+        },
+        {
+          "name": "ctr",
+          "type": "number",
+          "nullable": false,
+          "description": "clicks / impressions"
+        },
+        {
+          "name": "engagement_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "engagement_actions / impressions"
+        },
+        {
+          "name": "share_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "shares / impressions"
+        },
+        {
+          "name": "exposed_eligible_new_users",
+          "type": "integer",
+          "nullable": false,
+          "description": "发布当日处于首次参与14天内、被曝光且有完整后续14天观察的用户数；独立内容汇总样本"
+        },
+        {
+          "name": "exposed_repeat_14d_users",
+          "type": "integer",
+          "nullable": false,
+          "description": "上述曝光用户中曝光后14天内再次参与活动人数；窗口不同于首次参与KPI"
+        },
+        {
+          "name": "exposed_repeat_14d_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "exposed_repeat_14d_users / exposed_eligible_new_users；关联指标"
+        },
+        {
+          "name": "production_cost_cad",
+          "type": "integer",
+          "nullable": false,
+          "description": "内容制作直接现金成本CAD"
+        },
+        {
+          "name": "measurement_end",
+          "type": "string",
+          "nullable": false,
+          "description": "完整14天观察窗截止日（活动日期/内容发布日期+14）"
+        },
+        {
+          "name": "evidence_note",
+          "type": "string",
+          "nullable": false,
+          "description": "内容观察性证据限制"
+        }
+      ]
+    },
+    "experiments": {
+      "grain": "one historical experiment",
+      "row_count": 8,
+      "primary_key": "experiment_id",
+      "fields": [
+        {
+          "name": "experiment_id",
+          "type": "string",
+          "nullable": false,
+          "description": "实验主键"
+        },
+        {
+          "name": "experiment_name",
+          "type": "string",
+          "nullable": false,
+          "description": "历史实验名称"
+        },
+        {
+          "name": "study_design",
+          "type": "string",
+          "nullable": false,
+          "description": "randomized_pilot/self_selected_comparison/matched_observational"
+        },
+        {
+          "name": "target_segment",
+          "type": "string",
+          "nullable": false,
+          "description": "入组时目标分群，均为New"
+        },
+        {
+          "name": "sample_scope",
+          "type": "string",
+          "nullable": false,
+          "description": "独立历史汇总；不与users按ID关联"
+        },
+        {
+          "name": "start_date",
+          "type": "string",
+          "nullable": false,
+          "description": "历史入组日期；模拟单日入组"
+        },
+        {
+          "name": "duration_days",
+          "type": "integer",
+          "nullable": false,
+          "description": "入组后观察天数，均为14"
+        },
+        {
+          "name": "treatment_n",
+          "type": "integer",
+          "nullable": false,
+          "description": "处理组符合条件且完整观察人数"
+        },
+        {
+          "name": "treatment_repeat_14d",
+          "type": "integer",
+          "nullable": false,
+          "description": "处理组14天内复参与人数"
+        },
+        {
+          "name": "comparison_n",
+          "type": "integer",
+          "nullable": false,
+          "description": "比较组符合条件且完整观察人数"
+        },
+        {
+          "name": "comparison_repeat_14d",
+          "type": "integer",
+          "nullable": false,
+          "description": "比较组14天内复参与人数"
+        },
+        {
+          "name": "treatment_repeat_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "treatment_repeat_14d / treatment_n"
+        },
+        {
+          "name": "comparison_repeat_rate",
+          "type": "number",
+          "nullable": false,
+          "description": "comparison_repeat_14d / comparison_n"
+        },
+        {
+          "name": "observed_diff_pp",
+          "type": "number",
+          "nullable": false,
+          "description": "(处理组率-比较组率)*100；单位百分点"
+        },
+        {
+          "name": "observed_relative_lift",
+          "type": "number",
+          "nullable": false,
+          "description": "处理组率/比较组率-1；比例"
+        },
+        {
+          "name": "descriptive_diff_ci95_low_pp",
+          "type": "number",
+          "nullable": false,
+          "description": "两独立比例差正态近似95%区间下限，百分点；仅描述抽样不确定性"
+        },
+        {
+          "name": "descriptive_diff_ci95_high_pp",
+          "type": "number",
+          "nullable": false,
+          "description": "上述区间上限；不能修正选择偏差，小样本覆盖可能不足"
+        },
+        {
+          "name": "cash_cost_cad",
+          "type": "integer",
+          "nullable": false,
+          "description": "历史处理方案直接现金支出CAD，不含人工；不能直接作为未来报价"
+        },
+        {
+          "name": "staff_hours",
+          "type": "integer",
+          "nullable": false,
+          "description": "处理方案总人时，与现金成本分开"
+        },
+        {
+          "name": "peak_staff_required",
+          "type": "integer",
+          "nullable": false,
+          "description": "历史峰值同时投入人数；不等于全职人数"
+        },
+        {
+          "name": "engineering_effort",
+          "type": "string",
+          "nullable": false,
+          "description": "工程投入low/medium/high"
+        },
+        {
+          "name": "privacy_risk",
+          "type": "string",
+          "nullable": false,
+          "description": "数据使用风险low/medium/high，独立于用户同意"
+        },
+        {
+          "name": "evidence_strength",
+          "type": "string",
+          "nullable": false,
+          "description": "模拟证据标签low/medium/high；随机小样本最多medium，观察性为low"
+        },
+        {
+          "name": "ux_risk",
+          "type": "string",
+          "nullable": false,
+          "description": "用户体验风险low/medium/high"
+        },
+        {
+          "name": "limitations",
+          "type": "string",
+          "nullable": false,
+          "description": "偏差与适用范围"
+        },
+        {
+          "name": "treatment_opt_outs",
+          "type": "integer",
+          "nullable": false,
+          "description": "处理组14天内退订人数"
+        },
+        {
+          "name": "comparison_opt_outs",
+          "type": "integer",
+          "nullable": false,
+          "description": "比较组14天内退订人数"
+        },
+        {
+          "name": "treatment_unique_clickers",
+          "type": "integer",
+          "nullable": false,
+          "description": "处理组14天内至少点击一次人数"
+        },
+        {
+          "name": "comparison_unique_clickers",
+          "type": "integer",
+          "nullable": false,
+          "description": "比较组14天内至少点击一次人数"
+        },
+        {
+          "name": "treatment_complaints",
+          "type": "integer",
+          "nullable": false,
+          "description": "处理组14天内投诉人数；可与退订重叠"
+        },
+        {
+          "name": "comparison_complaints",
+          "type": "integer",
+          "nullable": false,
+          "description": "比较组14天内投诉人数；可与退订重叠"
+        }
+      ]
+    }
+  }
+}
